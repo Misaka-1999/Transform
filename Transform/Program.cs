@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+//用来将txt转换为excel方便后期处理
 namespace Transform
 {
     class Program
