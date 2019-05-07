@@ -18,11 +18,12 @@ namespace Transform
                                 "lrc101", "lrc102", "lrc103", "lrc104", "lrc105", "lrc106", "lrc107", "lrc108",
                                 "lrc201", "lrc202", "lrc203", "lrc204", "lrc205", "lrc206", "lrc207", "lrc208", 
                               };
-            for(int m = 0; m < DatArr.Count(); m++)
+            string FileAdress = "G:\\PdpData\\pdp_100\\";
+            for (int m = 0; m < DatArr.Count(); m++)
             {
                 string DatFile = DatArr[m];
-                string filepath = "G:\\PdpData\\pdp_100\\" + DatFile + ".txt";
-                string strFileName = "G:\\PdpData\\pdp_100\\" + DatFile + ".xlsx";
+                string filepath = FileAdress + DatFile + ".txt";
+                string strFileName = FileAdress + DatFile + ".xlsx";
                 Console.WriteLine("读取文档：" + DatFile);
                 StreamReader sr = new StreamReader(filepath, Encoding.Default);
                 String line;
