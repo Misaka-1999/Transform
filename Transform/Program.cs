@@ -11,8 +11,8 @@ namespace Transform
     {
         static void Main(string[] args)
         {
-            
-            TransDat100();
+
+            TransDatSolomon();
             
             
         }
@@ -130,7 +130,7 @@ namespace Transform
                                 "LRC2_2_1","LRC2_2_2","LRC2_2_3","LRC2_2_4","LRC2_2_5",
                                 "LRC2_2_6","LRC2_2_7","LRC2_2_8","LRC2_2_9","LRC2_2_10",
                               };
-            string FileAdress = "G:\\PdpData\\pdp_200\\";
+            string FileAdress = "D:\\VRP-Route-Data\\PDPTW\\pdp_200\\";
             for (int m = 0; m < DatArr.Count(); m++)
             {
                 string DatFile = DatArr[m];
@@ -218,5 +218,110 @@ namespace Transform
             }
         }
 
+        //针对200数量的数据进行处理
+        static void TransDatSolomon()
+        {
+            string[] DatArr = {
+                                "r101", "r102","r103", "r104", "r105","r106","r107","r108","r109","r110","r111","r112",
+                                "r201", "r202","r203","r204", "r205", "r206", "r207","r208","r209","r210","r211",
+                                "c101", "c102","c103", "c104", "c105", "c106","c107", "c108","c109",
+                                "c201","c202","c203", "c204","c205","c206","c207","c208",
+                                "rc101", "rc102", "rc103", "rc104", "rc105", "rc106", "rc107",
+                                "rc201", "rc202", "rc203", "rc204", "rc205", "rc206", "rc207", "rc208"
+                              };
+            string FileAdress = "D:\\VRP-Route-Data\\solomen数据\\In\\";
+            for (int m = 0; m < DatArr.Count(); m++)
+            {
+                string DatFile = DatArr[m];
+                string filepath = FileAdress + DatFile + ".txt";
+                string strFileName = FileAdress + DatFile + ".xlsx";
+                Console.WriteLine("读取文档：" + DatFile);
+                StreamReader sr = new StreamReader(filepath, Encoding.Default);
+                String line;
+                List<int[]> CusData = new List<int[]>();
+                bool CheckNum = false;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    line = line.ToString();
+                    string[] LineArr = line.Split(' ');
+                    LineArr = LineArr.Where(x => x != "").ToArray();
+                    if (LineArr.Count() < 5) continue;
+                    else
+                    {
+                        if(!CheckNum)
+                        {
+                            CheckNum = true;
+                            continue;
+                        }
+                        int[] arr = new int[LineArr.Count()];
+                        for (int i = 0; i < LineArr.Count(); i++)
+                        {
+                            arr[i] = Convert.ToInt32(LineArr[i]);
+                        }
+                        CusData.Add(arr);
+                    }
+                }
+                //创建Excel并保存
+                Console.WriteLine("----------------创建EXCEL---------------");
+                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                if (xlApp == null)
+                {
+                    //clsLog.m_CreateErrorLog("无法创建Excel对象，可能计算机未安装Excel", "", "");
+                    return;
+                }
+                //創建Excel對象
+                Microsoft.Office.Interop.Excel.Workbooks workbooks = xlApp.Workbooks;
+                Microsoft.Office.Interop.Excel.Workbook workbook = workbooks.Add(Microsoft.Office.Interop.Excel.XlWBATemplate.xlWBATWorksheet);
+                //Excel.Worksheet worksheet = (Excel.Worksheet)workbook.Worksheets[1];//取得sheet1
+                Microsoft.Office.Interop.Excel.Worksheet worksheet = null;
+                if (worksheet == null)
+                {
+                    worksheet = (Microsoft.Office.Interop.Excel.Worksheet)workbook.Worksheets.Add(Type.Missing, Type.Missing, 1, Type.Missing);
+                }
+                else
+                {
+                    worksheet = (Microsoft.Office.Interop.Excel.Worksheet)workbook.Worksheets.Add(Type.Missing, worksheet, 1, Type.Missing);
+                }
+                Microsoft.Office.Interop.Excel.Range range = null;
+                //数据复制到excel中
+                int rowIndex = 0;
+                worksheet.Name = "CusData";
+                for (int i = 0; i < CusData.Count; i++)
+                {
+                    rowIndex++;
+                    int[] arr = CusData[i];
+                    //tripID                       
+                    for (int j = 1; j <= arr.Length; j++)
+                    {
+                        xlApp.Cells[rowIndex, j] = arr[j - 1];
+                    }
+                }
+                //下面是将Excel存储在服务器上指定的路径与存储的名称
+                try
+                {
+                    workbook.Saved = true;
+                    workbook.SaveCopyAs(strFileName);
+
+                }
+                catch
+                {
+                    return;
+                }
+                finally
+                {
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheet);
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
+
+                    // 很多文章上都说必须调用此方法， 但是我试过没有调用oExcel.Quit() 的情况， 进程也能安全退出，
+                    //还是保留着吧。ITPUB个人空间%_.N2X%BjUFl
+                    xlApp.Quit();
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(xlApp);
+                    // 垃圾回收是必须的。 测试如果不执行垃圾回收， 无法关闭Excel 进程。
+                    xlApp = null;
+                    GC.Collect();
+                    Console.WriteLine("==========完成转换！==========");
+                }
+            }
+        }
     }
 }
