@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.OleDb;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,10 +13,7 @@ namespace Transform
     {
         static void Main(string[] args)
         {
-
-            TransDatSolomon();
-            
-            
+            TransTJFDat();
         }
         //针对100数量的数据进行处理
         static void TransDat100()
@@ -302,6 +301,128 @@ namespace Transform
                     workbook.Saved = true;
                     workbook.SaveCopyAs(strFileName);
 
+                }
+                catch
+                {
+                    return;
+                }
+                finally
+                {
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheet);
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
+
+                    // 很多文章上都说必须调用此方法， 但是我试过没有调用oExcel.Quit() 的情况， 进程也能安全退出，
+                    //还是保留着吧。ITPUB个人空间%_.N2X%BjUFl
+                    xlApp.Quit();
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(xlApp);
+                    // 垃圾回收是必须的。 测试如果不执行垃圾回收， 无法关闭Excel 进程。
+                    xlApp = null;
+                    GC.Collect();
+                    Console.WriteLine("==========完成转换！==========");
+                }
+            }
+        }
+
+        //针对实例数据进行处理
+        static void TransTJFDat()
+        {
+            string[] DatArr = {
+                "SR80U401", "SC90U401", "SRC70U401", "SRC65S401", "SR85S401", "SC75S401",
+                "SR228U401", "SC200U401", "SRC186U401", "SR150S401", "SC260S401", "SRC290S401",
+                "SR430U401", "SC450U401", "SRC686U401", "SR330S401", "SC620S401", "SRC460S401",
+                              };
+            string FileAdress = "D:\\VRP-Route-Data\\机场接送实例数据\\随机实例文档\\随机实例文档\\";
+            //打开0点坐标
+            string strConn = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=D:\\VRP-Route-Data\\机场接送实例数据\\随机实例文档\\vrp实例随机产生速度和机场坐标——MYY.xlsx;Extended Properties='Excel 12.0;HDR=no;IMEX=1'";
+            OleDbConnection conn = new OleDbConnection(strConn);
+            OleDbDataAdapter myCommand1 = new OleDbDataAdapter("SELECT * FROM [Sheet1$]", strConn);
+            DataTable tripData = new DataTable();
+            try
+            {
+                myCommand1.Fill(tripData);
+            }
+            catch (System.Exception ex)
+            {
+                throw new System.Exception(ex.Message);
+            }
+            for (int m = 0; m < DatArr.Count(); m++)
+            {
+                string DatFile = DatArr[m];
+                string filepath = FileAdress + DatFile + ".txt";
+                string strFileName = FileAdress + DatFile + ".xlsx";
+                Console.WriteLine("读取文档：" + DatFile);
+                StreamReader sr = new StreamReader(filepath, Encoding.Default);
+                String line;
+                List<double[]> CusData = new List<double[]>();
+                //0点
+                double[] arr = new double[6];
+                arr[1] = Convert.ToDouble(tripData.Rows[m + 1][3].ToString());
+                arr[2] = Convert.ToDouble(tripData.Rows[m + 1][4].ToString());
+                arr[4] = 24;
+                arr[5] = Convert.ToDouble(tripData.Rows[m + 1][2].ToString());
+                CusData.Add(arr);
+                //customer data
+                while ((line = sr.ReadLine()) != null)
+                {
+                    line = line.ToString();
+                    string[] LineArr = line.Split(' ');
+                    arr = new double[6];
+                    for (int i = 0; i < 3; i++)
+                    {
+                        arr[i] = Convert.ToInt32(LineArr[i]);
+                    }
+                    //early time
+                    DateTime dt = Convert.ToDateTime(LineArr[3]);
+                    double cusTim = Math.Round(dt.Hour + dt.Minute / 60.0, 3);
+                    arr[3] = cusTim;
+                    //last time
+                    dt = Convert.ToDateTime(LineArr[10]);
+                    cusTim = Math.Round(dt.Hour + dt.Minute / 60.0, 3);
+                    arr[4] = cusTim;
+                    //request
+                    arr[5] = Convert.ToInt32(LineArr[11]);
+                    CusData.Add(arr);
+                }
+                //创建Excel并保存
+                Console.WriteLine("----------------创建EXCEL---------------");
+                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                if (xlApp == null)
+                {
+                    //clsLog.m_CreateErrorLog("无法创建Excel对象，可能计算机未安装Excel", "", "");
+                    return;
+                }
+                //創建Excel對象
+                Microsoft.Office.Interop.Excel.Workbooks workbooks = xlApp.Workbooks;
+                Microsoft.Office.Interop.Excel.Workbook workbook = workbooks.Add(Microsoft.Office.Interop.Excel.XlWBATemplate.xlWBATWorksheet);
+                //Excel.Worksheet worksheet = (Excel.Worksheet)workbook.Worksheets[1];//取得sheet1
+                Microsoft.Office.Interop.Excel.Worksheet worksheet = null;
+                if (worksheet == null)
+                {
+                    worksheet = (Microsoft.Office.Interop.Excel.Worksheet)workbook.Worksheets.Add(Type.Missing, Type.Missing, 1, Type.Missing);
+                }
+                else
+                {
+                    worksheet = (Microsoft.Office.Interop.Excel.Worksheet)workbook.Worksheets.Add(Type.Missing, worksheet, 1, Type.Missing);
+                }
+                Microsoft.Office.Interop.Excel.Range range = null;
+                //数据复制到excel中
+                int rowIndex = 0;
+                worksheet.Name = "CusData";
+                for (int i = 0; i < CusData.Count; i++)
+                {
+                    rowIndex++;
+                    arr = CusData[i];
+                    //tripID                       
+                    for (int j = 1; j <= arr.Length; j++)
+                    {
+                        xlApp.Cells[rowIndex, j] = arr[j - 1];
+                    }
+                }
+                //下面是将Excel存储在服务器上指定的路径与存储的名称
+                try
+                {
+                    workbook.Saved = true;
+                    workbook.SaveCopyAs(strFileName);
                 }
                 catch
                 {
